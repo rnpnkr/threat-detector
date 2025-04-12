@@ -1,107 +1,50 @@
 # Technical Context
 
-## Core Technologies
+## Technology Stack
 
-### 1. Backend Framework
-- **Flask 2.3.3**
-  - Lightweight web framework
-  - RESTful API implementation
-  - Running on port 5001
-  - Debug mode enabled
-  - Current endpoint: http://localhost:5001
+### Backend
+- **Framework**: Flask 2.3.3
+- **AI Model**: YOLOv8 (Ultralytics)
+- **Image Processing**: OpenCV
+- **Real-time Communication**: flask-sock 0.6.0
+- **Environment Management**: python-dotenv
+- **Python Version**: 3.9+
 
-### 2. Frontend Framework
-- **React 18.3.1**
-  - Vite as build tool
-  - TypeScript support
-  - React Router for navigation
-  - React Query for data fetching
-  - Shadcn UI components
-  - Tailwind CSS for styling
-  - Current endpoint: http://localhost:8080
+### Frontend
+- **Framework**: React 18
+- **Build Tool**: Vite
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: Shadcn/ui
+- **Real-time**: WebSocket Client
 
-### 3. Machine Learning
-- **YOLOv8**
-  - Model version: 8.0.196
-  - Detection threshold: 0.3
-  - Model path: ./yolov8_model/runs/detect/Normal_Compressed/weights/best.pt
-  - Integration: Direct Python integration
-  - Available classes: guns, knife
+## Development Environment
 
-### 4. Python Dependencies
-```python
-# Core dependencies
-Flask==2.3.3
-ultralytics==8.0.196
-torch==2.1.0
-torchvision==0.16.0
-opencv-python==4.8.1.78
-python-dotenv==1.0.0
-```
-
-### 5. Frontend Dependencies
-```json
-{
-  "react": "^18.3.1",
-  "react-dom": "^18.3.1",
-  "react-router-dom": "^6.26.2",
-  "@tanstack/react-query": "^5.56.2",
-  "tailwindcss": "^3.4.11",
-  "typescript": "^5.5.3",
-  "vite": "^5.4.1"
-}
-```
-
-## Development Setup
-
-### 1. Environment Configuration
+### Backend Setup
 ```bash
-# Backend Virtual Environment
+# Virtual Environment
 python -m venv venv
-source venv/bin/activate  # On Unix/macOS
-cd backend
-python app.py  # Runs on http://localhost:5001
+source venv/bin/activate
 
-# Frontend Setup
-cd frontend
+# Dependencies
+pip install -r requirements.txt
+
+# Run Server
+python app.py
+```
+
+### Frontend Setup
+```bash
+# Dependencies
 npm install
-npm run dev  # Runs on http://localhost:8080
+
+# Development Server
+npm run dev
 ```
 
-### 2. Directory Structure
-```
-threat-detection/
-├── backend/
-│   ├── app.py
-│   ├── requirements.txt
-│   ├── .env
-│   ├── uploads/
-│   ├── outputs/
-│   └── yolov8_model/
-│       ├── detecting-images.py
-│       ├── runs/
-│       │   └── detect/
-│       │       └── Normal_Compressed/
-│       │           └── weights/
-│       │               └── best.pt
-│       └── imgs/
-│           └── Test/
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── lib/
-│   │   ├── pages/
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── public/
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tailwind.config.ts
-└── venv/
-```
+## Configuration
 
-### 3. Environment Variables
+### Environment Variables
 ```env
 # Flask Configuration
 FLASK_APP=app.py
@@ -113,55 +56,160 @@ FLASK_PORT=5001
 # Model Configuration
 MODEL_PATH=./yolov8_model/runs/detect/Normal_Compressed/weights/best.pt
 DETECTION_THRESHOLD=0.3
+```
 
-# File Storage
-UPLOAD_FOLDER=./uploads
-OUTPUT_FOLDER=./yolov8_model/imgs/Test
+### Port Configuration
+- Backend API: 5001 (avoiding AirPlay conflicts)
+- Frontend Dev Server: 8080
+- WebSocket: 5001 (shared with API)
+
+## Dependencies
+
+### Backend Dependencies
+```txt
+flask==2.3.3
+ultralytics==8.0.196
+torch==2.1.0
+torchvision==0.16.0
+opencv-python==4.8.1.78
+python-dotenv==1.0.0
+flask-sock==0.6.0
+```
+
+### Frontend Dependencies
+```json
+{
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "tailwindcss": "^3.0.0",
+    "@radix-ui/react-alert-dialog": "^1.0.0",
+    "lucide-react": "^0.0.0"
+  }
+}
 ```
 
 ## API Endpoints
 
-### 1. Health Check
-```http
-GET http://localhost:5001/health
-Response: {"status": "healthy"}
+### REST Endpoints
+1. `POST /detect`
+   - Upload image for detection
+   - Returns detection results and paths
+
+2. `GET /static/images/<path>`
+   - Serve static images
+   - Handles both original and annotated images
+
+### WebSocket Endpoints
+1. `ws://localhost:5001/ws`
+   - Real-time detection notifications
+   - Client connection management
+
+## File Storage
+
+### Directory Structure
+```
+backend/
+└── static/
+    └── images/
+        ├── uploads/     # Original images
+        └── annotated/   # Processed images
 ```
 
-### 2. Detection
-```http
-POST http://localhost:5001/detect
-Content-Type: multipart/form-data
-Body: image=<file>
+### File Naming
+- Original: `filename.jpg`
+- Annotated: `annotated_filename.jpg`
 
-Response: {
-    "message": "Detection completed successfully",
-    "original_image": "<path>",
-    "annotated_image": "<path>",
-    "detections": [
-        {
-            "class": "guns",
-            "confidence": 0.40,
-            "bbox": {
-                "xmin": 752,
-                "ymin": 940,
-                "xmax": 836,
-                "ymax": 1046
-            }
-        }
-    ],
-    "image_info": {
-        "shape": [1600, 1001, 3],
-        "original_path": "<path>"
-    },
-    "model_info": {
-        "path": "<model_path>",
-        "classes": {
-            "0": "guns",
-            "1": "knife"
-        }
-    }
-}
-```
+## Detection Model
+
+### YOLOv8 Configuration
+- Model: YOLOv8
+- Weights: `best.pt`
+- Classes: guns (0), knife (1)
+- Confidence Threshold: 0.3
+
+### Processing Pipeline
+1. Image Upload
+2. YOLOv8 Detection
+3. OpenCV Annotation
+4. Result Storage
+5. Client Notification
+
+## Development Tools
+
+### Required Tools
+- Python 3.9+
+- Node.js 16+
+- npm/yarn
+- Git
+
+### Recommended Tools
+- VS Code
+- Python extension
+- ESLint
+- Prettier
+
+## Testing
+
+### Backend Testing
+- Unit tests (to be implemented)
+- Integration tests (to be implemented)
+- API tests (to be implemented)
+
+### Frontend Testing
+- Component tests (to be implemented)
+- Integration tests (to be implemented)
+- E2E tests (to be implemented)
+
+## Deployment
+
+### Requirements
+- Python 3.9+
+- Node.js 16+
+- npm/yarn
+- Git
+- OpenCV dependencies
+
+### Process
+1. Clone repository
+2. Install dependencies
+3. Configure environment
+4. Build frontend
+5. Start backend server
+
+## Security Considerations
+
+### Input Validation
+- File type checking
+- Size limits
+- Path validation
+
+### Output Sanitization
+- File path sanitization
+- Response data cleaning
+- Error message sanitization
+
+### Resource Protection
+- Rate limiting (to be implemented)
+- File size limits
+- Connection limits
+
+## Performance Optimization
+
+### Image Processing
+- Efficient annotation
+- Memory management
+- Batch processing (future)
+
+### WebSocket
+- Connection pooling
+- Message batching
+- Reconnection handling
+
+### Frontend
+- Image caching
+- State management
+- UI updates optimization
 
 ## Technical Constraints
 

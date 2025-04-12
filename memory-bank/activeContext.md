@@ -1,134 +1,89 @@
 # Active Context
 
 ## Current Focus
-- Successfully implemented and tested the Flask API with YOLOv8 model integration
-- Working detection endpoint at http://localhost:5001/detect
-- Frontend development server running at http://localhost:8080
-- Tested with sample image (concept-terrorist.jpg) showing successful detection
-- Implemented detailed detection response format
-- Frontend UI implementation in progress
-- React application setup with TypeScript and Vite
+- Successfully implemented Flask API with YOLOv8 integration
+- Implemented real-time WebSocket communication between frontend and backend
+- Frontend displays annotated images with backend-drawn bounding boxes
+- Alert system for high-severity threats
 
 ## Recent Changes
-- Moved Flask server to port 5001 to avoid AirPlay conflicts
-- Frontend development server configured to run on port 8080
-- Updated .env configuration with correct paths and settings
-- Enhanced API response with detailed detection information:
-  - Bounding box coordinates
-  - Confidence scores
-  - Class information
-  - Image and model metadata
-- Successfully tested the complete pipeline:
-  - Image upload
-  - Detection processing
-  - Result storage
-  - Detailed response formatting
-- Added frontend project structure:
-  - React with TypeScript
-  - Vite build system
-  - Shadcn UI components
-  - Tailwind CSS styling
+1. Backend:
+   - Moved image storage to `backend/static/images/` structure
+   - Added WebSocket support using flask-sock
+   - Improved error handling and logging
+   - Centralized image processing in backend
+
+2. Frontend:
+   - Removed frontend bounding box rendering
+   - Simplified detection display
+   - Added WebSocket connection for real-time updates
+   - Improved UI with Shadcn components
 
 ## Active Decisions
-- Using port 5001 for Flask server (avoiding AirPlay conflicts)
-- Using port 8080 for frontend development server
-- Detection threshold set to 0.3 (30%)
-- Output paths configured in .env:
-  - Uploads: ./uploads/
-  - Annotated images: ./yolov8_model/imgs/Test/
-- Response format includes:
-  - Detection details
-  - Bounding boxes
-  - Confidence scores
-  - Image and model metadata
-- Frontend technology stack:
-  - React 18 with TypeScript
-  - Vite for build
-  - Shadcn UI for components
-  - Tailwind CSS for styling
+1. Image Processing:
+   - All detection visualization handled by backend OpenCV
+   - Frontend only displays pre-annotated images
+   - Images stored in structured directories under backend/static
+
+2. Communication:
+   - WebSocket for real-time updates
+   - REST API for image upload and processing
+   - Static file serving for images
+
+3. Configuration:
+   - Detection threshold set to 0.3
+   - Flask server running on port 5001
+   - Frontend dev server on port 8080
 
 ## Current Implementation Status
-- Backend:
-  - API Endpoints:
-    - GET http://localhost:5001/health - Working
-    - POST http://localhost:5001/detect - Working with detailed response format
-  - Model Integration:
-    - YOLOv8 model successfully loading
-    - Detection working with proper confidence scores
-    - Image processing and annotation functional
-    - Detailed detection data extraction
-  - File Management:
-    - Upload directory working
-    - Output directory working
-    - File naming convention established
-  - Response Format:
-    - Structured JSON output
-    - Detailed detection information
-    - Image and model metadata
-    - Error handling and status codes
 
-- Frontend:
-  - Development Server:
-    - Running on http://localhost:8080
-    - Hot reloading enabled
-    - Vite development server
-  - Project Structure:
-    - Components directory setup
-    - Pages directory setup
-    - Hooks directory setup
-    - Lib directory setup
-  - Build System:
-    - Vite configuration
-    - TypeScript setup
-    - Tailwind CSS configuration
-  - UI Components:
-    - Shadcn UI integration
-    - Basic layout components
-  - API Integration:
-    - React Query setup
-    - API client configuration
-    - Type definitions
+### Backend
+✅ Implemented:
+- Flask API with endpoints for detection and static files
+- YOLOv8 model integration
+- WebSocket notifications
+- Image processing and annotation
+- Structured file storage
+- Error handling and logging
+
+### Frontend
+✅ Implemented:
+- Real-time camera feed display
+- WebSocket connection
+- Alert system for threats
+- Control buttons (scanning, recording, fullscreen)
+- Modern UI with Tailwind CSS
 
 ## Next Steps
 1. Backend:
-   - Consider implementing additional endpoints:
-     - Batch processing
-     - Detection history
-     - Configuration updates
-   - Add more robust error handling
-   - Implement logging system
-   - Consider adding authentication
-   - Add API documentation (Swagger/OpenAPI)
-   - Add detection statistics tracking
+   - Add support for video streams
+   - Implement detection history logging
+   - Add authentication and security
+   - Optimize image processing
 
 2. Frontend:
-   - Implement main UI components
-   - Add image upload functionality
-   - Create detection results display
-   - Implement error handling
-   - Add loading states
-   - Set up routing
-   - Add user authentication (if needed)
-   - Implement responsive design
-   - Configure CORS for local development
+   - Add multiple camera view support
+   - Implement detection history view
+   - Add configuration panel
+   - Enhance alert customization
 
 ## Current Considerations
-- Backend:
-  - Need to monitor memory usage with large images
-  - Consider implementing cleanup for old uploads
-  - May need to optimize image processing for large files
-  - Consider adding rate limiting for API endpoints
-  - Monitor detection data structure performance
-  - Consider adding detection statistics tracking
+1. Performance:
+   - Monitor WebSocket connection stability
+   - Track image processing speed
+   - Optimize memory usage
 
-- Frontend:
-  - Bundle size optimization
-  - Performance optimization
-  - Cross-browser compatibility
-  - Mobile responsiveness
-  - State management
-  - Error handling strategy
-  - Loading state management
-  - API integration testing
-  - CORS configuration for local development
-  - Proxy configuration for API requests 
+2. Security:
+   - Add input validation
+   - Implement file size limits
+   - Add authentication
+
+3. Scalability:
+   - Plan for multiple camera support
+   - Consider video stream processing
+   - Prepare for increased load
+
+4. User Experience:
+   - Monitor alert effectiveness
+   - Track system responsiveness
+   - Gather feedback on UI/UX 

@@ -1,28 +1,157 @@
-# Local Threat Detection Demo
+# Threat Detection System
 
-This project is a proof-of-concept for a threat detection system, designed as a demo in Nagpur, India. It:
-1. Allows uploading an image locally through a web-based UI.
-2. Uses a YOLOv8-based AI model to detect weapons (guns/knives) in the uploaded image.
-3. Sends a WhatsApp alert with a screenshot of the detection output when a threat is detected.
+A real-time threat detection system using YOLOv8 and Flask, with a modern React frontend for monitoring and alerts.
 
-This is the initial phase, running entirely on a local machine. Future phases will incorporate mobile uploads and live video streaming (potentially tested on Android for better quality). The solution is designed to be general-purpose for later expansion.
+## Features
 
+- 🎯 Real-time weapon detection using YOLOv8
+- 🖥️ Modern React frontend with real-time updates
+- 🚀 Flask backend with WebSocket support
+- 📸 Image processing and annotation
+- ⚡ Instant threat alerts and notifications
+- 🔍 Detection confidence scoring
+- 📊 Threat severity classification
 
----
+## Tech Stack
 
-## Prerequisites
+### Backend
+- Flask 2.3.3
+- YOLOv8 (Ultralytics)
+- OpenCV
+- WebSocket (flask-sock)
+- Python 3.9+
 
-- **Local Machine**: A computer (Windows, macOS, or Linux) with Python 3.8+ installed.
-- **Python Environment**: For running the YOLOv8 model and Flask server.
-- **WhatsApp Account**: For sending alerts (via Twilio API).
-- **Image Source**: Local images (e.g., from your filesystem) for testing.
-
----
+### Frontend
+- React 18
+- TypeScript
+- Tailwind CSS
+- Shadcn/ui Components
+- WebSocket Client
 
 ## Project Structure
+```
+threat-detection/
+├── backend/
+│   ├── app.py                 # Flask API
+│   ├── requirements.txt       # Python dependencies
+│   └── static/
+│       └── images/
+│           ├── uploads/       # Original uploaded images
+│           └── annotated/     # Images with detection boxes
+├── frontend/
+│   ├── src/
+│   │   ├── components/       
+│   │   │   └── CameraFeed.tsx # Main camera feed component
+│   │   └── ...
+│   ├── package.json
+│   └── ...
+└── yolov8_model/
+    ├── runs/
+    │   └── detect/
+    │       └── Normal_Compressed/
+    │           └── weights/
+    │               └── best.pt # YOLOv8 model weights
+    └── imgs/
+        └── Test/              # Test images
+```
 
-This phase focuses on local image upload via a web UI and weapon detection. Mobile uploads and streaming are planned for later.
+## Setup Instructions
 
+### Backend Setup
 
-## Important
-Make sure all requirements and packages are executed via a new virtual envioronment "threat-ml"
+1. Create and activate virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+2. Install dependencies:
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+3. Run the Flask server:
+```bash
+python app.py
+```
+
+The server will start on `http://localhost:5001`
+
+### Frontend Setup
+
+1. Install dependencies:
+```bash
+cd frontend
+npm install
+```
+
+2. Start the development server:
+```bash
+npm run dev
+```
+
+The frontend will be available at `http://localhost:8080`
+
+## API Endpoints
+
+### `/detect` (POST)
+- Upload an image for threat detection
+- Returns detection results and annotated image
+- Example:
+```bash
+curl -X POST -F "image=@path/to/image.jpg" http://localhost:5001/detect
+```
+
+### `/static/images/<path>` (GET)
+- Serves static images (both original and annotated)
+
+### `/ws` (WebSocket)
+- Real-time updates for new detections
+
+## Detection Classes
+
+The system currently detects:
+- Guns (Class 0)
+- Knives (Class 1)
+
+## Environment Variables
+
+Create a `.env` file in the backend directory:
+```env
+FLASK_APP=app.py
+FLASK_ENV=development
+FLASK_DEBUG=1
+FLASK_HOST=0.0.0.0
+FLASK_PORT=5001
+MODEL_PATH=./yolov8_model/runs/detect/Normal_Compressed/weights/best.pt
+DETECTION_THRESHOLD=0.3
+```
+
+## Current Status
+
+✅ Implemented:
+- Backend API with YOLOv8 integration
+- Image upload and processing
+- Real-time WebSocket notifications
+- Frontend camera feed display
+- Threat detection visualization
+- Alert system for high-severity threats
+
+🚧 In Progress:
+- Multiple camera support
+- Video stream processing
+- Detection history logging
+- Advanced alert configurations
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

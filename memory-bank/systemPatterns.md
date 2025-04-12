@@ -1,30 +1,173 @@
 # System Patterns
 
 ## Architecture Overview
+
 ```mermaid
 graph TD
-    A[Frontend UI] --> B[Flask API]
-    B --> C[YOLOv8 Model]
-    B --> D[File System]
-    C --> E[Detection Results]
-    D --> F[Upload Storage]
-    D --> G[Output Storage]
-    E --> B
-    B --> A
-
     subgraph Frontend
-        A --> H[React Components]
-        H --> I[React Router]
-        H --> J[React Query]
-        H --> K[Shadcn UI]
+        UI[React UI]
+        WS[WebSocket Client]
+        State[State Management]
     end
 
     subgraph Backend
-        B --> L[Flask Routes]
-        C --> M[YOLOv8 Processing]
-        D --> N[File Management]
+        API[Flask API]
+        WSS[WebSocket Server]
+        Model[YOLOv8 Model]
+        CV[OpenCV Processing]
+        Storage[File Storage]
     end
+
+    UI --> WS
+    WS <--> WSS
+    UI --> API
+    API --> Model
+    Model --> CV
+    CV --> Storage
+    API --> Storage
+    WSS --> State
 ```
+
+## Design Patterns
+
+### Backend Patterns
+
+1. **Observer Pattern**
+   - WebSocket server notifies all connected clients of new detections
+   - Clients receive real-time updates without polling
+
+2. **Factory Pattern**
+   - Detection processing pipeline
+   - Image annotation generation
+   - Response formatting
+
+3. **Singleton Pattern**
+   - YOLOv8 model instance
+   - WebSocket server
+   - File storage management
+
+4. **Strategy Pattern**
+   - Detection threshold configuration
+   - Image processing options
+   - Alert severity classification
+
+### Frontend Patterns
+
+1. **Component Pattern**
+   - Reusable UI components
+   - Camera feed display
+   - Alert notifications
+
+2. **Observer Pattern**
+   - WebSocket client for real-time updates
+   - State updates based on backend events
+
+3. **Container/Presenter Pattern**
+   - Separation of data management and presentation
+   - Camera feed container and presenter components
+
+## Data Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Model
+    participant Storage
+    participant WebSocket
+
+    Client->>API: Upload Image
+    API->>Storage: Save Original
+    API->>Model: Process Image
+    Model->>Storage: Save Annotated
+    API->>WebSocket: Notify Clients
+    WebSocket->>Client: Update UI
+```
+
+## File Structure
+
+```
+backend/
+├── static/
+│   └── images/
+│       ├── uploads/     # Original images
+│       └── annotated/   # Processed images
+├── app.py              # Main application
+└── requirements.txt    # Dependencies
+
+frontend/
+├── src/
+│   ├── components/     # Reusable components
+│   ├── hooks/         # Custom hooks
+│   ├── lib/           # Utilities
+│   └── styles/        # CSS/Tailwind
+└── package.json
+```
+
+## Communication Patterns
+
+1. **REST API**
+   - Image upload
+   - Detection requests
+   - Health checks
+
+2. **WebSocket**
+   - Real-time detection notifications
+   - Connection management
+   - Client tracking
+
+3. **Static File Serving**
+   - Original images
+   - Annotated images
+   - Asset delivery
+
+## Error Handling
+
+1. **Backend**
+   - Input validation
+   - File processing errors
+   - Model errors
+   - Storage errors
+
+2. **Frontend**
+   - Network errors
+   - WebSocket disconnections
+   - Image loading errors
+   - UI state errors
+
+## Security Patterns
+
+1. **Input Validation**
+   - File type checking
+   - Size limits
+   - Content validation
+
+2. **Output Sanitization**
+   - File path sanitization
+   - Response data cleaning
+   - Error message sanitization
+
+3. **Resource Protection**
+   - Rate limiting
+   - File size limits
+   - Connection limits
+
+## Optimization Patterns
+
+1. **Image Processing**
+   - Efficient annotation
+   - Memory management
+   - Batch processing
+
+2. **WebSocket**
+   - Connection pooling
+   - Message batching
+   - Reconnection handling
+
+3. **Frontend**
+   - Image caching
+   - State management
+   - UI updates
 
 ## Core Components
 
@@ -84,93 +227,6 @@ graph TD
   - File paths
 - **Centralized Configuration**: Using .env file
 
-## Design Patterns
-
-### 1. Frontend Patterns
-```typescript
-// Component Pattern
-const Component: React.FC<Props> = ({ prop1, prop2 }) => {
-  const { data, isLoading } = useQuery(['key'], fetchData);
-  
-  return (
-    <div className="container">
-      {isLoading ? <LoadingSpinner /> : <DataDisplay data={data} />}
-    </div>
-  );
-};
-
-// API Integration Pattern
-const useDetection = () => {
-  return useMutation({
-    mutationFn: (image: File) => {
-      const formData = new FormData();
-      formData.append('image', image);
-      return fetch('/detect', {
-        method: 'POST',
-        body: formData,
-      }).then(res => res.json());
-    },
-  });
-};
-```
-
-### 2. Backend Request-Response Pattern
-```python
-@app.route('/detect', methods=['POST'])
-def detect():
-    try:
-        # Process request
-        # Perform detection
-        # Format response
-        return jsonify({
-            "message": "Detection completed successfully",
-            "original_image": filepath,
-            "annotated_image": result_path,
-            "detections": [
-                {
-                    "class": "guns",
-                    "confidence": 0.40,
-                    "bbox": {
-                        "xmin": 752,
-                        "ymin": 940,
-                        "xmax": 836,
-                        "ymax": 1046
-                    }
-                }
-            ],
-            "image_info": {
-                "shape": [1600, 1001, 3],
-                "original_path": filepath
-            },
-            "model_info": {
-                "path": model_path,
-                "classes": {"0": "guns", "1": "knife"}
-            }
-        })
-    except Exception as e:
-        return handle_error(e)
-```
-
-### 3. Error Handling Pattern
-```python
-# Consistent error response format
-{
-    "error": "Error message",
-    "status": "error"
-}
-```
-
-### 4. File Processing Pattern
-```python
-# Standard file handling flow
-1. Validate file
-2. Generate unique filename
-3. Save to uploads
-4. Process with model
-5. Save results
-6. Return paths and detection data
-```
-
 ## Integration Patterns
 
 ### 1. Frontend-Backend Integration
@@ -190,13 +246,6 @@ def detect():
 - Local file storage
 - Path management
 - Cleanup procedures (to be implemented)
-
-## Security Patterns
-- Basic file validation
-- Error message sanitization
-- Path traversal prevention
-- CORS configuration
-- Input sanitization
 
 ## Performance Considerations
 - Image size handling
