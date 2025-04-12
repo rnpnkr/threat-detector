@@ -1,0 +1,52 @@
+# Project Structure
+- backend/
+  - app.py (Flask API)
+  - requirements.txt (Dependencies)
+  - .env (Environment variables)
+  - yolov8_model/
+    - detecting-images.py (Detection logic)
+    - runs/detect/Normal_Compressed/weights/best.pt (YOLOv8 model)
+    - imgs/Test/ (Test images)
+
+# Virtual Environment Setup
+1. Create virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
+
+2. Install dependencies:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   ```
+
+3. Run detection script:
+   ```bash
+   cd yolov8_model
+   python detecting-images.py
+   ```
+
+4. Run Flask API:
+   ```bash
+   cd backend
+   python app.py
+   ```
+
+# API Endpoints
+- GET /health - Health check
+- POST /detect - Upload image and run detection
+
+# Dependencies
+- Flask 2.3.3
+- ultralytics 8.0.196
+- torch 2.1.0
+- torchvision 0.16.0
+- opencv-python 4.8.1.78
+- Other dependencies in requirements.txt
+
+# Notes
+- Always activate virtual environment before running scripts
+- Model path: ./runs/detect/Normal_Compressed/weights/best.pt
+- Detection threshold: 0.3 (30%)
+- Supported image formats: PNG, JPG, JPEG 
