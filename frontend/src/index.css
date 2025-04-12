@@ -1,0 +1,99 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 13%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 18% 15%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 18% 15%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 20% 21%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 20% 21%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 20% 21%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 20% 25%;
+    --input: 217 20% 25%;
+    --ring: 224 71% 80%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 222 24% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 18% 15%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 222 18% 18%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .threat-item {
+    @apply relative flex items-center gap-2 p-3 rounded-md transition-all hover:bg-secondary;
+  }
+  
+  .threat-item.high {
+    @apply border-l-4 border-police-red bg-police-red/10;
+  }
+  
+  .threat-item.medium {
+    @apply border-l-4 border-alert-medium bg-alert-medium/10;
+  }
+  
+  .threat-item.low {
+    @apply border-l-4 border-alert-low bg-alert-low/10;
+  }
+  
+  .camera-feed {
+    @apply relative w-full aspect-video bg-black rounded-lg overflow-hidden border border-border;
+  }
+  
+  .camera-overlay {
+    @apply absolute inset-0 pointer-events-none;
+  }
+  
+  .detection-box {
+    @apply absolute border-2 rounded-sm flex items-center justify-center;
+  }
+  
+  .detection-box.high {
+    @apply border-police-red;
+  }
+  
+  .detection-box.medium {
+    @apply border-alert-medium;
+  }
+  
+  .detection-box.low {
+    @apply border-alert-low;
+  }
+}
