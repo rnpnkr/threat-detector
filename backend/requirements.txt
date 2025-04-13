@@ -10,6 +10,9 @@ numpy==1.24.3
 PyWavelets==1.5.0
 torch==2.1.0
 torchvision==0.16.0
+tensorflow==2.9.1
+deepface==0.0.75
+#openpose-python==1.0.0
 
 # WhatsApp Integration
 twilio==8.10.0
