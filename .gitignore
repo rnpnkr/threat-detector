@@ -66,4 +66,8 @@ backend/outputs/*
 
 # Environment files
 backend/.env
-frontend/.env 
+frontend/.env
+
+# Exclude frontend lib directory from being ignored
+!frontend/src/lib/
+!frontend/src/lib/utils.ts 
