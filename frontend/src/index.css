@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -73,11 +72,15 @@
     @apply border-l-4 border-alert-low bg-alert-low/10;
   }
   
-  .camera-feed {
+  .video-feed {
     @apply relative w-full aspect-video bg-black rounded-lg overflow-hidden border border-border;
   }
   
-  .camera-overlay {
+  .video-feed canvas {
+    @apply w-full h-full object-cover;
+  }
+  
+  .video-overlay {
     @apply absolute inset-0 pointer-events-none;
   }
   

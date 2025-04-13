@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import Navbar from '@/components/Navbar';
-import CameraFeed from '@/components/CameraFeed';
+import VideoFeed from '@/components/VideoFeed';
 import ThreatLog from '@/components/ThreatLog';
 import StatusPanel from '@/components/StatusPanel';
 import StatCards from '@/components/StatCards';
@@ -11,14 +10,14 @@ interface Detection {
   id: number;
   type: string;
   confidence: number;
-  box: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
   severity: 'low' | 'medium' | 'high';
   timestamp: Date;
+  bbox: {
+    xmin: number;
+    ymin: number;
+    xmax: number;
+    ymax: number;
+  };
 }
 
 const Index = () => {
@@ -39,7 +38,7 @@ const Index = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[500px]">
           <div className="lg:col-span-2 h-full">
-            <CameraFeed onDetection={handleDetection} />
+            <VideoFeed onDetection={handleDetection} />
           </div>
           
           <div className="h-full">
