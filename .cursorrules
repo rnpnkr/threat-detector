@@ -36,6 +36,7 @@
 # API Endpoints
 - GET /health - Health check
 - POST /detect - Upload image and run detection
+- GET /static/<filename> - Serve annotated images
 
 # Dependencies
 - Flask 2.3.3
@@ -45,8 +46,50 @@
 - opencv-python 4.8.1.78
 - Other dependencies in requirements.txt
 
+# Project Features
+## Current Implementation
+- Static image detection using YOLOv8
+- Weapon detection (guns/knives)
+- Bounding box visualization
+- Basic Flask API
+
+## In Progress
+- Real-time video processing
+- CCTV camera integration
+- Profiling system
+- WhatsApp alerts
+
+## Future Features
+- LLM integration for multi-language
+- Enhanced profiling
+- Additional threat categories
+
 # Notes
 - Always activate virtual environment before running scripts
 - Model path: ./runs/detect/Normal_Compressed/weights/best.pt
 - Detection threshold: 0.3 (30%)
-- Supported image formats: PNG, JPG, JPEG 
+- Supported image formats: PNG, JPG, JPEG
+- API runs on port 5001 (to avoid AirPlay conflict)
+- Test images should be placed in backend/yolov8_model/imgs/Test/
+- Annotated images are served from backend/static/images/
+
+# Development Guidelines
+1. Environment:
+   - Use Python 3.8+
+   - Always work in virtual environment
+   - Keep requirements.txt updated
+
+2. Testing:
+   - Test with sample images in Test directory
+   - Verify detection accuracy
+   - Check API response times
+
+3. Security:
+   - Keep .env file secure
+   - Don't commit sensitive data
+   - Follow security best practices
+
+4. Performance:
+   - Monitor processing times
+   - Optimize for real-time processing
+   - Consider resource utilization 
