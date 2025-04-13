@@ -1,61 +1,72 @@
 # Active Context
 
 ## Current Focus
-- Successfully implemented basic image detection system
-- Working on real-time video feed integration
-- Preparing for profiling system implementation
-- Planning WhatsApp alert system integration
+- Improving YOLOv8 model for video streaming (Rohan)
+- Implementing high-confidence image capture logic
+- Developing profiling system for threat detection
+- Integrating WhatsApp alerts with OpenAI for multi-language support
+- Merging feature/streaming branch to main
 
 ## Current Implementation Status
 
 ### Backend
 ✅ Implemented:
 - Flask API with endpoints for detection
-- YOLOv8 model integration for weapon detection
+- YOLOv8 model integration for static image detection
 - Image processing and annotation
 - Basic error handling
+- Video streaming branch (feature/streaming)
 
 🔄 In Progress:
-- Real-time video feed processing
-- Profiling system architecture
-- WhatsApp integration
+- Improved YOLOv8 model for video
+- High-confidence image capture logic
+- Profiling system implementation
+- WhatsApp and OpenAI integration
 
 ### Frontend
 ✅ Implemented:
 - Image upload and display
 - Detection results visualization with bounding boxes
-- Basic UI for system interaction
+- Demo options UI:
+  - Preloaded video selection
+  - Live streaming from Android device
+  - Language selection (Marathi, English, Hindi)
 
 ## Next Steps
 1. Backend:
-   - Implement real-time video processing
-   - Develop profiling system
-   - Integrate WhatsApp API
-   - Add authentication and security
+   - Integrate improved YOLOv8 model for video
+   - Implement high-confidence image capture logic
+   - Complete profiling system implementation
+   - Integrate WhatsApp API with OpenAI translation
+   - Merge feature/streaming branch to main
 
 2. Frontend:
-   - Add real-time video feed display
+   - Enhance video streaming display
    - Implement profiling results display
-   - Add alert configuration
-   - Enhance UI for officer notifications
+   - Add multi-language alert configuration
+   - Optimize UI for real-time processing
 
 ## Current Considerations
 1. Performance:
+   - Video streaming optimization
+   - High-confidence detection logic
    - Real-time processing requirements
    - System latency optimization
-   - Resource utilization
 
-2. Security:
-   - CCTV feed security
-   - Officer data protection
-   - System access control
-
-3. Scalability:
-   - Multiple camera support
-   - Concurrent threat processing
-   - Alert system reliability
-
-4. Integration:
+2. Integration:
    - WhatsApp API integration
+   - OpenAI translation service
    - Profiling system development
-   - Future LLM integration 
+   - Android device streaming
+
+3. Data Management:
+   - High-confidence image storage
+   - Profile data processing
+   - Alert message formatting
+   - Multi-language support
+
+4. Deployment:
+   - Branch merging strategy
+   - System testing
+   - Performance optimization
+   - Security implementation 
