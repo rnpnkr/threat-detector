@@ -9,6 +9,8 @@ import cv2
 import numpy as np
 import time
 import json
+from yolov8_model.detecting_images import process_video_stream
+import threading
 
 # Add the yolov8_model directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -56,6 +58,9 @@ model = YOLO(MODEL_PATH)
 
 # Store connected WebSocket clients
 connected_clients = set()
+
+# Add video path constant
+VIDEO_PATH = "/Users/aryan98/threat-detection/backend/streaming/test/test_video_3.mov"
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -186,6 +191,24 @@ def serve_static(filename):
     except Exception as e:
         print(f"Error serving static file: {e}")
         return str(e), 404
+
+# Add new WebSocket endpoint for video
+@sock.route('/ws/video')
+def handle_video_stream(ws):
+    logger.info("New video WebSocket connection established")
+    try:
+        # Start video processing in a separate thread
+        thread = threading.Thread(target=process_video_stream, args=(VIDEO_PATH, ws))
+        thread.start()
+        
+        # Keep the WebSocket connection alive
+        while True:
+            ws.receive()
+            
+    except Exception as e:
+        logger.error(f"Error in video WebSocket handler: {str(e)}", exc_info=True)
+    finally:
+        logger.info("Video WebSocket connection closed")
 
 if __name__ == '__main__':
     # Get configuration from environment variables

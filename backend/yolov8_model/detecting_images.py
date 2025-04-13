@@ -2,10 +2,21 @@ import cv2
 from ultralytics import YOLO
 import os
 import logging
+import base64
+import json
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Filter out YOLO's logs
+class YOLOLogFilter(logging.Filter):
+    def filter(self, record):
+        return not record.name.startswith('ultralytics')
+
+# Apply the filter to the root logger
+logging.getLogger().addFilter(YOLOLogFilter())
 
 def detect_objects_in_photo(image_path):
     """
@@ -188,6 +199,117 @@ def detect_objects_and_plot(path_orig):
     cv2.imshow("Test Detection", image_orig)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+def process_video_stream(video_path, ws):
+    """
+    Process video stream in real-time and send frames via WebSocket.
+    Args:
+        video_path: Path to the video file
+        ws: WebSocket connection
+    """
+    try:
+        logger.info(f"Starting video processing for: {video_path}")
+        
+        # Load YOLO model using the correct path
+        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                                 'runs/detect/Normal_Compressed/weights/best.pt')
+        logger.info(f"Looking for model at: {model_path}")
+        
+        if not os.path.exists(model_path):
+            logger.error(f"Model file not found at {model_path}")
+            return None
+            
+        logger.info("Loading YOLO model...")
+        # Create YOLO model with verbosity set to False
+        yolo_model = YOLO(model_path)
+        # Set verbosity using the correct method
+        yolo_model.verbose = False
+        logger.info("Model loaded successfully")
+        
+        # Open video file
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            logger.error(f"Failed to open video file: {video_path}")
+            return None
+            
+        logger.info("Video file opened successfully")
+        
+        # Get video properties
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        logger.info(f"Video properties - Width: {width}, Height: {height}, FPS: {fps}, Total Frames: {total_frames}")
+        
+        frame_count = 0
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                logger.info("End of video stream reached")
+                break
+                
+            frame_count += 1
+            logger.debug(f"Processing frame {frame_count}/{total_frames}")
+            
+            # Run detection with verbose=False
+            results = yolo_model(frame, conf=0.3, verbose=False)
+            
+            # Process results
+            detections = []
+            for result in results:
+                for box in result.boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].tolist()
+                    conf = float(box.conf[0])
+                    cls = int(box.cls[0])
+                    
+                    detections.append({
+                        "bbox": {
+                            "xmin": x1,
+                            "ymin": y1,
+                            "xmax": x2,
+                            "ymax": y2
+                        },
+                        "class": "guns" if cls == 0 else "knife",
+                        "confidence": conf
+                    })
+            
+            # Draw annotations on frame
+            annotated_frame = results[0].plot()
+            
+            # Convert frame to base64 for WebSocket transmission
+            _, buffer = cv2.imencode('.jpg', annotated_frame)
+            frame_base64 = base64.b64encode(buffer).decode('utf-8')
+            
+            # Prepare WebSocket message
+            message = {
+                "type": "video_frame",
+                "payload": {
+                    "frame": frame_base64,
+                    "detections": detections,
+                    "frame_number": frame_count,
+                    "total_frames": total_frames
+                }
+            }
+            
+            # Send frame via WebSocket
+            try:
+                ws.send(json.dumps(message))
+                logger.debug(f"Frame {frame_count} sent via WebSocket")
+            except Exception as e:
+                logger.error(f"Error sending frame {frame_count}: {str(e)}")
+                break
+            
+            # Add small delay to control frame rate
+            time.sleep(1/fps)
+        
+        cap.release()
+        logger.info("Video processing completed")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error in process_video_stream: {str(e)}", exc_info=True)
+        return None
 
 if __name__ == "__main__":
     # Test image detection
