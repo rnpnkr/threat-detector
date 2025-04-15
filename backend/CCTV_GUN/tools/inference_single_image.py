@@ -4,6 +4,7 @@ import mmcv
 import torch
 import numpy as np
 import os
+import time  # Import the time module
 from mmdet.apis import init_detector, inference_detector
 
 def parse_args():
@@ -20,15 +21,26 @@ def main():
     args = parse_args()
     
     # Build the model from a config file and a checkpoint file
+    print("Initializing the model...")
+    model_init_start = time.time()
     model = init_detector(args.config, args.checkpoint, device=args.device)
+    model_init_end = time.time()
+    print(f"Model initialization took: {model_init_end - model_init_start:.4f} seconds")
     
     # Read the image
+    print(f"Reading image: {args.image}")
     img = mmcv.imread(args.image)
     
-    # Run inference
+    # Run inference and time it
+    print("Running inference...")
+    start_time = time.time()
     result = inference_detector(model, img)
+    end_time = time.time()
+    processing_time = end_time - start_time
+    print(f"Inference processing time: {processing_time:.4f} seconds") # Print the processing time
     
     # Create a copy of the image for visualization
+    print("Visualizing results...")
     vis_img = img.copy()
     
     # Handle different result formats
@@ -76,6 +88,7 @@ def main():
             args.output = args.output + '.jpg'
     
     # Save the result
+    print(f"Saving result to {args.output}")
     mmcv.imwrite(vis_img, args.output)
     print(f'Result saved to {args.output}')
 
