@@ -1,24 +1,22 @@
-# Web Framework
+# Web Framework & Core App Dependencies
 flask==2.3.3
 python-dotenv==1.0.0
 Werkzeug==2.3.7
+flask-sock==0.6.0
+python-multipart==0.0.6 # For Flask file uploads
 
-# YOLOv8 and Computer Vision
-ultralytics==8.0.196
-opencv-python==4.8.1.78
-numpy==1.24.3
-PyWavelets==1.5.0
-torch==2.1.0
-torchvision==0.16.0
-tensorflow==2.9.1
-deepface==0.0.75
-#openpose-python==1.0.0
+# --- Removed/Commented Out ---
+# The following dependencies are either unused by app.py or
+# should be managed by the conda environment (env_cc) for the CCTV_GUN model
+# to avoid version conflicts.
 
-# WhatsApp Integration
-twilio==8.10.0
-
-# Utilities
-pillow==10.0.0
-python-multipart==0.0.6
-requests==2.31.0
-flask-sock==0.6.0 
+# opencv-python==4.8.1.78 # Provided by conda env_cc
+# numpy==1.24.3 # Provided by conda env_cc
+# PyWavelets==1.5.0 # Unused
+# torch==2.1.0 # Provided by conda env_cc (different version required)
+# torchvision==0.16.0 # Provided by conda env_cc (different version required)
+# tensorflow==2.9.1 # Unused
+# deepface==0.0.75 # Unused
+# twilio==8.10.0 # Unused
+# pillow==10.0.0 # Likely provided by conda env_cc dependencies
+# requests==2.31.0 # Unused 

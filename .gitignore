@@ -70,4 +70,17 @@ frontend/.env
 
 # Exclude frontend lib directory from being ignored
 !frontend/src/lib/
-!frontend/src/lib/utils.ts 
+!frontend/src/lib/utils.ts
+
+# Ignore downloaded tools/installers in the root
+Miniconda*-Linux-x86_64.sh
+ngrok
+ngrok.tgz
+
+# Ignore generated output files
+backend/CCTV_GUN/tools/testing/output/
+backend/test/output/
+
+# Ignore specific backend static subdirectories but track others
+backend/static/images/uploads/
+backend/static/images/annotated/ 
