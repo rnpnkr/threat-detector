@@ -128,55 +128,85 @@ def detect_gun_in_image(image_path):
     try:
         logger.info(f"Processing detection results. Type: {type(result)}")
         confidence_threshold = 0.3 # Set confidence threshold
-        gun_label = 1 # Assuming label 1 is 'gun' in this model's config
+        # Define class IDs and names
+        target_classes = {
+            0: "person",
+            1: "gun"
+        }
+        # Define colors for bounding boxes (BGR)
+        class_colors = {
+            "person": (255, 0, 0), # Blue
+            "gun": (0, 255, 0)   # Green
+        }
 
-        if isinstance(result, list):
-            logger.info("Processing list-based result format.")
-            if len(result) > gun_label:
-                gun_results = result[gun_label]
-                logger.info(f"Found {len(gun_results)} potential gun detections in list format.")
-                for detection in gun_results:
-                    if len(detection) == 5:
-                        bbox = detection[:4]
-                        score = detection[4]
-                        if score >= confidence_threshold:
-                            x1, y1, x2, y2 = map(int, bbox)
-                            detection_data = { "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}, "class": "gun", "confidence": float(score) }
-                            detections_list.append(detection_data)
-                            logger.debug(f"Detected gun with confidence {score:.2f} at bbox [{x1}, {y1}, {x2}, {y2}]")
-                            cv2.rectangle(vis_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                            cv2.putText(vis_img, f'Gun: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    else:
-                         logger.warning(f"Unexpected detection format in list: {detection}")
-            else:
-                logger.warning(f"Result list does not contain index for gun_label {gun_label}")
+        # Determine the structure of the result (list vs pred_instances)
+        is_pred_instances_format = hasattr(result, 'pred_instances')
 
-        elif hasattr(result, 'pred_instances'):
+        if is_pred_instances_format:
             logger.info("Processing pred_instances-based result format.")
             predictions = result.pred_instances
             bboxes = predictions.bboxes.cpu().numpy()
             scores = predictions.scores.cpu().numpy()
             labels = predictions.labels.cpu().numpy()
             logger.info(f"Found {len(bboxes)} potential detections in pred_instances format.")
+
             for i in range(len(bboxes)):
                 bbox = bboxes[i]
                 score = scores[i]
                 label = labels[i]
-                if label == gun_label and score >= confidence_threshold:
+
+                if label in target_classes and score >= confidence_threshold:
+                    class_name = target_classes[label]
+                    color = class_colors.get(class_name, (0, 0, 255)) # Default to Red if class unknown
                     x1, y1, x2, y2 = map(int, bbox)
-                    detection_data = { "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}, "class": "gun", "confidence": float(score) }
+                    detection_data = {
+                        "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2},
+                        "class": class_name,
+                        "confidence": float(score)
+                    }
                     detections_list.append(detection_data)
-                    logger.debug(f"Detected gun with confidence {score:.2f} at bbox [{x1}, {y1}, {x2}, {y2}]")
-                    cv2.rectangle(vis_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(vis_img, f'Gun: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    logger.debug(f"Detected {class_name} with confidence {score:.2f} at bbox [{x1}, {y1}, {x2}, {y2}]")
+                    cv2.rectangle(vis_img, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(vis_img, f'{class_name}: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+        elif isinstance(result, list):
+            logger.info("Processing list-based result format (may be older MMDetection).")
+            # Assuming the list index corresponds to the class ID
+            for label, class_results in enumerate(result):
+                if label in target_classes:
+                    class_name = target_classes[label]
+                    color = class_colors.get(class_name, (0, 0, 255))
+                    logger.info(f"Found {len(class_results)} potential {class_name} detections.")
+                    for detection in class_results:
+                        if len(detection) == 5:
+                            bbox = detection[:4]
+                            score = detection[4]
+                            if score >= confidence_threshold:
+                                x1, y1, x2, y2 = map(int, bbox)
+                                detection_data = {
+                                    "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2},
+                                    "class": class_name,
+                                    "confidence": float(score)
+                                }
+                                detections_list.append(detection_data)
+                                logger.debug(f"Detected {class_name} with confidence {score:.2f} at bbox [{x1}, {y1}, {x2}, {y2}]")
+                                cv2.rectangle(vis_img, (x1, y1), (x2, y2), color, 2)
+                                cv2.putText(vis_img, f'{class_name}: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                        else:
+                            logger.warning(f"Unexpected detection format in list for class {label}: {detection}")
+                else:
+                    # Optional: Log if results for non-target classes are found
+                    # logger.debug(f"Skipping results for class ID {label} (not in target_classes)")
+                    pass
+
         else:
             # Handle cases where result might be None or an unexpected type
             if result is None:
-                 logger.warning("Inference result was None.")
+                logger.warning("Inference result was None.")
             else:
-                 logger.error(f"Unrecognized result format: {type(result)}")
+                logger.error(f"Unrecognized result format: {type(result)}")
 
-        logger.info(f"Processed results. Found {len(detections_list)} guns above threshold {confidence_threshold}.")
+        logger.info(f"Processed results. Found {len(detections_list)} target detections (persons/guns) above threshold {confidence_threshold}.")
 
     except Exception as e:
         logger.error(f"Error processing detection results: {e}", exc_info=True)
@@ -240,23 +270,22 @@ def detect_gun_in_video_frame(model, frame):
         # logger.debug("Inference complete for frame.")
 
         confidence_threshold = 0.3
-        gun_label = 1
+        # Define class IDs and names
+        target_classes = {
+            0: "person",
+            1: "gun"
+        }
+        # Define colors for bounding boxes (BGR)
+        class_colors = {
+            "person": (255, 0, 0), # Blue
+            "gun": (0, 255, 0)   # Green
+        }
 
-        if isinstance(result, list):
-            if len(result) > gun_label:
-                gun_results = result[gun_label]
-                for detection in gun_results:
-                    if len(detection) == 5:
-                        bbox = detection[:4]
-                        score = detection[4]
-                        if score >= confidence_threshold:
-                            x1, y1, x2, y2 = map(int, bbox)
-                            detection_data = { "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}, "class": "gun", "confidence": float(score) }
-                            detections_list.append(detection_data)
-                            cv2.rectangle(vis_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                            cv2.putText(vis_frame, f'Gun: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        # Determine the structure of the result (list vs pred_instances)
+        is_pred_instances_format = hasattr(result, 'pred_instances')
 
-        elif hasattr(result, 'pred_instances'):
+        if is_pred_instances_format:
+            # logger.debug("Processing pred_instances format for video frame.")
             predictions = result.pred_instances
             bboxes = predictions.bboxes.cpu().numpy()
             scores = predictions.scores.cpu().numpy()
@@ -265,14 +294,44 @@ def detect_gun_in_video_frame(model, frame):
                 bbox = bboxes[i]
                 score = scores[i]
                 label = labels[i]
-                if label == gun_label and score >= confidence_threshold:
+                if label in target_classes and score >= confidence_threshold:
+                    class_name = target_classes[label]
+                    color = class_colors.get(class_name, (0, 0, 255))
                     x1, y1, x2, y2 = map(int, bbox)
-                    detection_data = { "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}, "class": "gun", "confidence": float(score) }
+                    detection_data = { "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}, "class": class_name, "confidence": float(score) }
                     detections_list.append(detection_data)
-                    cv2.rectangle(vis_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(vis_frame, f'Gun: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        # else: # Avoid logging errors repeatedly for video frames
-        #     pass
+                    cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
+                    cv2.putText(vis_frame, f'{class_name}: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+        elif isinstance(result, list):
+            # logger.debug("Processing list format for video frame.")
+            for label, class_results in enumerate(result):
+                if label in target_classes:
+                    class_name = target_classes[label]
+                    color = class_colors.get(class_name, (0, 0, 255))
+                    for detection in class_results:
+                        if len(detection) == 5:
+                            bbox = detection[:4]
+                            score = detection[4]
+                            if score >= confidence_threshold:
+                                x1, y1, x2, y2 = map(int, bbox)
+                                detection_data = { "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}, "class": class_name, "confidence": float(score) }
+                                detections_list.append(detection_data)
+                                cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
+                                cv2.putText(vis_frame, f'{class_name}: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                else:
+                    # Optional: Log if results for non-target classes are found
+                    # logger.debug(f"Skipping results for class ID {label} (not in target_classes)")
+                    pass
+
+        else:
+            # Handle cases where result might be None or an unexpected type
+            if result is None:
+                logger.warning("Inference result was None.")
+            else:
+                logger.error(f"Unrecognized result format: {type(result)}")
+
+        logger.info(f"Processed results. Found {len(detections_list)} target detections (persons/guns) above threshold {confidence_threshold}.")
 
     except Exception as e:
         # Log error less frequently for video to avoid spamming logs

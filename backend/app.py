@@ -86,28 +86,34 @@ def handle_video_feed_ws(ws):
     Handles WebSocket connection for streaming video detection results.
     Starts a background thread to process the video and send results back via this ws connection.
     """
-    logger.info(f"New video feed WebSocket connection established: {ws}")
+    logger.info(f"--- WebSocket Connection Attempt Received ---")
+    logger.info(f"WebSocket object: {ws}")
+    logger.info(f"Attempting to add WebSocket to video_clients set.")
     video_clients.add(ws)
+    logger.info(f"Successfully added WebSocket to video_clients set. Current clients: {len(video_clients)}")
     processing_thread = None
     try:
         # --- Start Video Processing Thread ---
         video_to_process = TEST_VIDEO_PATH
+        logger.info(f"Checking existence of video file: {video_to_process}")
         if not os.path.exists(video_to_process):
              logger.error(f"Video file specified for streaming not found: {video_to_process}")
              try:
+                 logger.info(f"Sending 'video not found' error to WebSocket client: {ws}")
                  ws.send(json.dumps({"type": "error", "payload": "Video file not found on server."}))
              except Exception as send_err:
                  logger.error(f"Failed to send error to WebSocket client: {send_err}")
              return
 
-        logger.info(f"Starting CCTV_GUN video processing thread for: {video_to_process}")
+        logger.info(f"Video file found. Preparing to start CCTV_GUN video processing thread for: {video_to_process}")
         processing_thread = threading.Thread(
             target=process_cctv_gun_video_stream,
             args=(video_to_process, ws), # Pass ws object
             daemon=True
         )
+        logger.info(f"Processing thread object created: {processing_thread}")
         processing_thread.start()
-        logger.info(f"Video processing thread started (Thread ID: {processing_thread.ident}).")
+        logger.info(f"Video processing thread started (Thread ID: {processing_thread.ident}). Entering keep-alive loop.")
 
         # --- Keep Connection Alive ---
         while True:
