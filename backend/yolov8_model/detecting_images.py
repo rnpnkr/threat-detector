@@ -1,5 +1,6 @@
 import cv2
-from ultralytics import YOLO
+# Remove YOLOv8 import
+# from ultralytics import YOLO # This line was causing the error, remove/comment it
 import os
 import logging
 import base64

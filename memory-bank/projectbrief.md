@@ -2,7 +2,7 @@
 
 ## Core Requirements
 - Real-time video feed processing from CCTV cameras in Nagpur, India
-- YOLOv8-based AI model for weapon detection (guns/knives)
+- MMDetection-based AI model (ConvNext from `CCTV_GUN`) for weapon detection (guns)
 - WhatsApp alert system for threat notifications
 - Profiling system for threat identification
 - Multi-language support via LLM integration
@@ -16,13 +16,15 @@
 ## Project Scope
 ### Phase 1 (Current)
 - Basic image upload and detection via web UI
-- Weapon detection using YOLOv8
+- Weapon detection using MMDetection (ConvNext) model
 - Display of detection results with bounding boxes
-- Local deployment and testing
+- WebSocket video streaming with frame skipping (due to CPU limits)
+- Local CPU-based testing and deployment
 
 ### Phase 2 (In Progress)
-- Real-time video feed processing
-- Integration with CCTV cameras
+- Deployment to Cloud GPU Instance
+- Performance optimization on GPU
+- Integration with CCTV cameras (pending)
 - Profiling system implementation
 - WhatsApp alert system
 

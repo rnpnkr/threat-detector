@@ -9,16 +9,20 @@ import cv2
 import numpy as np
 import time
 import json
-from yolov8_model.detecting_images import process_video_stream
 import threading
 
 # Add the yolov8_model directory to the Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from yolov8_model.detecting_images import detect_objects_in_photo
-from ultralytics import YOLO
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Remove unused photo detection import
+# from yolov8_model.detecting_images import detect_objects_in_photo 
+# Remove YOLO class import
+# from ultralytics import YOLO
+
+# Import the MMDetection functions
+from CCTV_GUN.detecting_images import detect_gun_in_image, process_cctv_gun_video_stream
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
@@ -52,9 +56,6 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 # Configuration
 MODEL_PATH = os.getenv('MODEL_PATH', './yolov8_model/runs/detect/Normal_Compressed/weights/best.pt')
 DETECTION_THRESHOLD = float(os.getenv('DETECTION_THRESHOLD', '0.3'))
-
-# Load YOLOv8 model
-model = YOLO(MODEL_PATH)
 
 # Store connected WebSocket clients
 connected_clients = set()
@@ -113,74 +114,57 @@ def detect_objects():
         file.save(upload_path)
         
         if not os.path.exists(upload_path):
-            print(f"Failed to save file at: {upload_path}")
+            logger.error(f"Failed to save file at: {upload_path}")
             return jsonify({"error": "Failed to save uploaded file"}), 500
         
-        # Read and process the image
-        image = cv2.imread(upload_path)
-        if image is None:
-            print(f"Failed to read image from: {upload_path}")
-            return jsonify({"error": "Failed to read image"}), 400
-        
-        # Run detection
-        results = model(image, conf=DETECTION_THRESHOLD)
-        
-        # Process results
-        detections = []
-        for result in results:
-            for box in result.boxes:
-                x1, y1, x2, y2 = box.xyxy[0].tolist()
-                conf = float(box.conf[0])
-                cls = int(box.cls[0])
-                
-                detections.append({
-                    "bbox": {
-                        "xmin": x1,
-                        "ymin": y1,
-                        "xmax": x2,
-                        "ymax": y2
-                    },
-                    "class": "guns" if cls == 0 else "knife",
-                    "confidence": conf
-                })
-        
-        # Save annotated image
-        annotated_filename = f"annotated_{filename}"
-        annotated_path = os.path.join(ANNOTATED_DIR, annotated_filename)
-        print(f"Saving annotated image to: {annotated_path}")
-        cv2.imwrite(annotated_path, results[0].plot())
-        
-        if not os.path.exists(annotated_path):
-            print(f"Failed to save annotated image at: {annotated_path}")
-            return jsonify({"error": "Failed to save annotated image"}), 500
-        
-        # Prepare response with relative paths
+        # Call the MMDetection function
+        logger.info(f"Calling detect_gun_in_image for: {upload_path}")
+        detection_result = detect_gun_in_image(upload_path)
+
+        if detection_result is None:
+            logger.error("Gun detection failed for image: {upload_path}")
+            return jsonify({"error": "Detection processing failed."}), 500
+
+        # Prepare response
+        detections = detection_result.get('detections', [])
+        relative_annotated_path = detection_result.get('annotated_image_path', None)
+
+        # Get image shape (optional, could read image again or pass it to the function)
+        try:
+            image_shape = cv2.imread(upload_path).shape
+        except Exception as e:
+            logger.warning(f"Could not read image {upload_path} to get shape: {e}")
+            image_shape = None
+
         response = {
-            "message": "Detection completed successfully",
+            "message": "Detection completed successfully using MMDetection",
             "detections": detections,
             "image_info": {
-                "shape": list(image.shape)
+                "shape": list(image_shape) if image_shape else None
             },
             "model_info": {
+                "type": "MMDetection",
                 "classes": {
-                    "0": "guns",
-                    "1": "knife"
+                    "1": "gun"
                 }
             },
-            "original_image": os.path.join('uploads', filename),
-            "annotated_image": os.path.join('annotated', annotated_filename)
+            "original_image": os.path.join('images', 'uploads', filename),
+            "annotated_image": os.path.join('images', relative_annotated_path) if relative_annotated_path else None
         }
-        
-        print(f"Detection successful. Response: {response}")
-        
+
+        logger.info(f"Detection successful. Response: {response}")
+
         # Notify all connected clients
-        notify_clients(response)
-        
+        notify_clients({
+            "type": "new_detection",
+            "payload": response
+        })
+
         return jsonify(response)
-        
+
     except Exception as e:
-        print(f"Error in detect_objects: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error in detect_objects endpoint: {str(e)}", exc_info=True)
+        return jsonify({"error": "An unexpected error occurred"}), 500
 
 @app.route('/static/images/<path:filename>')
 def serve_static(filename):
@@ -197,15 +181,30 @@ def serve_static(filename):
 def handle_video_stream(ws):
     logger.info("New video WebSocket connection established")
     try:
-        # Start video processing in a separate thread
-        thread = threading.Thread(target=process_video_stream, args=(VIDEO_PATH, ws))
+        # Start MMDetection video processing in a separate thread
+        # Pass the hardcoded VIDEO_PATH for now
+        logger.info(f"Starting MMDetection video processing thread for: {VIDEO_PATH}")
+        thread = threading.Thread(target=process_cctv_gun_video_stream, args=(VIDEO_PATH, ws))
+        thread.daemon = True # Allow app to exit even if thread is running
         thread.start()
+
+        # Keep the WebSocket connection alive simply by letting the thread run.
+        # The connection will remain open until the client disconnects or the thread finishes/errors.
+        # Removed the ws.receive() loop which was causing premature timeout.
+        # while True:
+        #     message = ws.receive(timeout=60) # Add a timeout
+        #     if message is None: # Handle potential timeout or client disconnect
+        #          logger.info("WebSocket keep-alive check: No message received, connection might be closing.")
+        #          break
+        #     # Optionally process client messages here if needed
         
-        # Keep the WebSocket connection alive
-        while True:
-            ws.receive()
-            
+        # Wait for the processing thread to finish (optional, but keeps the endpoint alive)
+        # Or rely on the client disconnecting to terminate the context
+        thread.join() # Wait here until the video processing thread completes
+        logger.info("Video processing thread finished.")
+
     except Exception as e:
+        # Catch specific WebSocket errors if possible, e.g., ConnectionClosed
         logger.error(f"Error in video WebSocket handler: {str(e)}", exc_info=True)
     finally:
         logger.info("Video WebSocket connection closed")

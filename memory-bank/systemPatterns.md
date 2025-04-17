@@ -13,8 +13,8 @@ graph TD
     subgraph Backend
         API[Flask API]
         WSS[WebSocket Server]
-        Model[YOLOv8 Model]
-        CV[OpenCV Processing]
+        Model[MMDetection Model]
+        CV[OpenCV/MMCV Processing]
         Storage[File Storage]
     end
 
@@ -33,23 +33,20 @@ graph TD
 ### Backend Patterns
 
 1. **Observer Pattern**
-   - WebSocket server notifies all connected clients of new detections
-   - Clients receive real-time updates without polling
+   - WebSocket server streams processed video frames and detection results.
+   - Clients receive real-time updates without polling.
 
 2. **Factory Pattern**
-   - Detection processing pipeline
-   - Image annotation generation
-   - Response formatting
+   - Not explicitly used, but `init_detector` acts like a factory for the model.
 
-3. **Singleton Pattern**
-   - YOLOv8 model instance
-   - WebSocket server
-   - File storage management
+3. **Singleton Pattern (Implicit)**
+   - The MMDetection model is loaded once per video stream thread.
+   - Flask app instance.
 
 4. **Strategy Pattern**
-   - Detection threshold configuration
-   - Image processing options
-   - Alert severity classification
+   - Configurable inference device (`cpu`/`cuda:0`).
+   - Detection threshold configuration.
+   - Frame skipping interval.
 
 ### Frontend Patterns
 
@@ -72,28 +69,61 @@ graph TD
 sequenceDiagram
     participant Client
     participant API
-    participant Model
+    participant MMDetection
     participant Storage
-    participant WebSocket
 
-    Client->>API: Upload Image
-    API->>Storage: Save Original
-    API->>Model: Process Image
-    Model->>Storage: Save Annotated
-    API->>WebSocket: Notify Clients
-    WebSocket->>Client: Update UI
+    Client->>API: Upload Image (POST /detect)
+    API->>Storage: Save Original (uploads/)
+    API->>MMDetection: detect_gun_in_image(path)
+    MMDetection->>Storage: Save Annotated (annotated/cctv_gun/)
+    MMDetection->>API: Return detections, annotated_path
+    API->>Client: JSON Response
+```
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API_WS_Handler
+    participant ProcessingThread
+    participant MMDetection
+    
+    Client->>API_WS_Handler: Connect WebSocket (ws://.../ws/video)
+    API_WS_Handler->>ProcessingThread: Start process_cctv_gun_video_stream(video_path, ws)
+    ProcessingThread->>MMDetection: init_detector() (Load Model Once)
+    loop Video Frames
+        ProcessingThread->>ProcessingThread: Read Frame
+        alt Process Frame (e.g., frame % 15 == 1)
+            ProcessingThread->>MMDetection: detect_gun_in_video_frame(model, frame)
+            MMDetection->>ProcessingThread: annotated_frame, detections
+        else Skip Frame
+            ProcessingThread->>ProcessingThread: Use raw_frame, empty detections
+        end
+        ProcessingThread->>ProcessingThread: Encode Frame (Base64)
+        ProcessingThread->>API_WS_Handler: Send JSON(frame, detections) via WebSocket
+        API_WS_Handler->>Client: Stream JSON message
+    end
 ```
 
 ## File Structure
 
 ```
 backend/
+├── CCTV_GUN/           # MMDetection Model and Logic
+│   ├── detecting_images.py # Image and Video detection functions
+│   ├── requirements.txt    # Model-specific Python dependencies
+│   ├── configs/          # MMDetection configuration files
+│   ├── work_dirs/        # Checkpoints, logs from training
+│   └── requirements/     # Original conda env file (env.yml)
+│   └── ... (mmdet library code, tools, etc.)
 ├── static/
 │   └── images/
-│       ├── uploads/     # Original images
-│       └── annotated/   # Processed images
-├── app.py              # Main application
-└── requirements.txt    # Dependencies
+│       ├── uploads/        # Original uploaded images
+│       └── annotated/      # Annotated images
+│           └── cctv_gun/   # Annotated images from MMDetection
+├── yolov8_model/       # Old model (To be removed?)
+│   └── ...
+├── app.py              # Main Flask application
+└── requirements.txt    # Server-level Python dependencies
 
 frontend/
 ├── src/
@@ -154,20 +184,9 @@ frontend/
 
 ## Optimization Patterns
 
-1. **Image Processing**
-   - Efficient annotation
-   - Memory management
-   - Batch processing
-
-2. **WebSocket**
-   - Connection pooling
-   - Message batching
-   - Reconnection handling
-
-3. **Frontend**
-   - Image caching
-   - State management
-   - UI updates
+1. **Frame Skipping:** Video detection runs only on Nth frame.
+2. **Model Loaded Once:** For video streams, the detection model is loaded once per connection.
+3. **GPU Acceleration (Planned):** Offload inference to GPU.
 
 ## Core Components
 
@@ -187,37 +206,35 @@ frontend/
   - App.tsx: Main application component
 
 ### 2. API Layer (Flask)
-- **Port Configuration**: Using port 5001 to avoid AirPlay conflicts
+- **Port Configuration**: 5001
 - **Endpoints**:
   - GET /health - System health check
-  - POST /detect - Image processing and detection
-- **Error Handling**: Basic implementation with proper HTTP status codes
-- **Response Format**: JSON with structured detection data
+  - POST /detect - Image processing (MMDetection)
+  - GET /static/images/<path> - Serve static images
+  - WebSocket /ws/video - Video stream processing (MMDetection)
+- **Error Handling**: Basic implementation
+- **Response Format**: JSON
 
-### 3. Detection System (YOLOv8)
-- **Model Integration**: Direct integration with Flask
+### 3. Detection System (MMDetection)
+- **Source:** `backend/CCTV_GUN/`
+- **Model Integration**: Functions called from Flask handlers.
 - **Configuration**:
+  - Config: `backend/CCTV_GUN/configs/gun_detection/convnext.py`
+  - Checkpoint: `backend/CCTV_GUN/work_dirs/convnext/epoch_3.pth`
   - Detection threshold: 0.3
-  - Model path: ./yolov8_model/runs/detect/Normal_Compressed/weights/best.pt
+  - Device: Currently `cpu`, plan `cuda:0`
 - **Processing Flow**:
-  1. Image upload
-  2. Model inference
-  3. Result processing
-  4. Image annotation
-  5. Result storage
-- **Output Classes**:
-  - guns
-  - knife
+  - Image: `detect_gun_in_image` (Load model per call currently - potential optimization)
+  - Video: `process_cctv_gun_video_stream` calls `detect_gun_in_video_frame` (Loads model once)
+- **Output Classes**: `gun`
 
 ### 4. File Management
 - **Upload System**:
-  - Directory: ./uploads/
-  - Unique filename generation
-  - File type validation
+  - Directory: `backend/static/images/uploads/`
+  - Werkzeug `secure_filename`
 - **Output System**:
-  - Directory: ./yolov8_model/imgs/Test/
-  - Annotated image storage
-  - Consistent naming convention
+  - Directory: `backend/static/images/annotated/cctv_gun/`
+  - Naming: `annotated_cctv_gun_<original_filename>`
 
 ### 5. Configuration Management
 - **Environment Variables**:
