@@ -6,6 +6,15 @@ import json
 import base64
 import numpy as np
 import torch # Required for torch.cuda.empty_cache()
+from dotenv import load_dotenv
+import sys
+import threading
+
+# Load environment variables
+load_dotenv()
+
+# Define logger before using it
+logger = logging.getLogger(__name__)
 
 # Assuming these are in the correct path relative to this file
 # If imports fail, adjust sys.path in app.py before importing this module
@@ -18,7 +27,33 @@ from CCTV_GUN.detecting_images import (
 )
 from mmdet.apis import init_detector
 
-logger = logging.getLogger(__name__)
+# Adjust sys.path to include the explicit backend directory to resolve import issues
+backend_dir = '/workspace/projects/threat-detector/backend'
+if backend_dir not in sys.path:
+    sys.path.append(backend_dir)
+    logger.info(f"Added {backend_dir} to sys.path for imports")
+
+# Dynamically add the profiling directory to sys.path for direct import
+profiling_dir = os.path.join(backend_dir, 'profiling')
+if profiling_dir not in sys.path:
+    sys.path.append(profiling_dir)
+    logger.info(f"Added {profiling_dir} to sys.path for WhatsApp alert imports")
+
+# Import WhatsApp alert functions directly from profiling directory
+try:
+    from whatsapp_alert import predict_profiling_data, generate_profiling_message, send_whatsapp_message
+except ImportError as e:
+    logger.warning(f"Failed to import WhatsApp alert functions: {e}. WhatsApp alerts will be disabled. Python path: {sys.path}")
+    # Define dummy functions to prevent errors if import fails
+    def predict_profiling_data(*args, **kwargs):
+        return {'error': 'Function not available'}
+    def generate_profiling_message(*args, **kwargs):
+        return 'Error: Function not available'
+    def send_whatsapp_message(*args, **kwargs):
+        return False
+    whatsapp_alert_available = False
+else:
+    whatsapp_alert_available = True
 
 # --- Helper Function for IoU --- (Moved from app.py)
 def calculate_iou(boxA, boxB):
@@ -60,7 +95,8 @@ class DualModelProcessor:
     def __init__(self, yolo_model, static_dir, 
                  high_confidence_threshold=0.7, mmdet_frame_skip=20, yolo_img_size=320,
                  # Pass MMDet details instead of assuming globals from import
-                 mmdet_config_path=CONFIG_PATH, mmdet_checkpoint_path=CHECKPOINT_PATH, device=DEVICE):
+                 mmdet_config_path=CONFIG_PATH, mmdet_checkpoint_path=CHECKPOINT_PATH, device=DEVICE,
+                 profiling_test_dir=None): # Add profiling dir argument
         """Initialize the processor with models and parameters."""
         self.yolo_model = yolo_model
         self.static_dir = static_dir
@@ -70,6 +106,20 @@ class DualModelProcessor:
         self.mmdet_config_path = mmdet_config_path
         self.mmdet_checkpoint_path = mmdet_checkpoint_path
         self.device = device
+        self.profiling_test_dir = profiling_test_dir # Store profiling dir path
+        
+        # WhatsApp alert configuration - Enabled by default
+        self.whatsapp_alert_enabled = True
+        self.whatsapp_number = os.getenv('WHATSAPP_ALERT_NUMBER', '+919987991854')
+        self.ngrok_domain = os.getenv('NGROK_DOMAIN', 'https://e7a9-213-192-2-118.ngrok-free.app')
+        if not whatsapp_alert_available:
+            logger.warning("WhatsApp alert functions not available due to import error. Alerts will be disabled.")
+            self.whatsapp_alert_enabled = False
+        if self.whatsapp_alert_enabled and not self.whatsapp_number:
+            logger.warning("WhatsApp alerts enabled but no target number provided. Alerts will not be sent.")
+            self.whatsapp_alert_enabled = False
+        if self.whatsapp_alert_enabled:
+            logger.info(f"WhatsApp alerts enabled for number: {self.whatsapp_number}")
         
         # Internal state
         self.person_gun_state = {} 
@@ -238,6 +288,77 @@ class DualModelProcessor:
                             if gun_confidence >= self.high_confidence_threshold:
                                 logger.info(f"  [ALERT_TRIGGER] Frame {self.frame_number}: First high-confidence ({gun_confidence:.2f}) gun alert for NEW person {person_key}.") # LOG 7
                                 new_high_confidence_alerts_this_frame.append({"personId": person_key, "gunConfidence": gun_confidence})
+                                
+                                # --- Profiling Capture & WhatsApp Alert --- 
+                                if self.profiling_test_dir:
+                                    try:
+                                        # Find the person's data in this frame's YOLO results
+                                        person_to_crop = next((p for p in yolo_persons_in_frame if p['id'] == final_associated_yolo_id), None)
+                                        if person_to_crop:
+                                            x1, y1, x2, y2 = person_to_crop['bbox']
+                                            # Ensure coordinates are valid
+                                            if x1 < x2 and y1 < y2 and x1 >= 0 and y1 >= 0 and x2 <= current_frame.shape[1] and y2 <= current_frame.shape[0]:
+                                                cropped_person = current_frame[y1:y2, x1:x2]
+                                                if cropped_person.size > 0: # Check if crop is not empty
+                                                    filename = f"{person_key}_frame{self.frame_number}_profile.jpg"
+                                                    # Save in a publicly accessible directory under static/images/profiles
+                                                    profiles_dir = os.path.join(self.static_dir, 'images', 'profiles')
+                                                    os.makedirs(profiles_dir, exist_ok=True)
+                                                    save_path = os.path.join(profiles_dir, filename)
+                                                    success = cv2.imwrite(save_path, cropped_person)
+                                                    if success:
+                                                        logger.info(f"  [PROFILING_CAPTURE] Saved profile crop for {person_key} to {save_path}")
+                                                        # Log the expected public URL for debugging
+                                                        public_image_url = f"{self.ngrok_domain}/static/images/profiles/{filename}" if self.ngrok_domain else "NGROK_DOMAIN not set, using local path: " + save_path
+                                                        logger.info(f"  [PUBLIC_URL] Expected public URL for image: {public_image_url}")
+                                                        # Trigger WhatsApp alert if enabled
+                                                        if self.whatsapp_alert_enabled:
+                                                            try:
+                                                                # Extract profiling data
+                                                                profiling_data = predict_profiling_data(save_path)
+                                                                if 'error' not in profiling_data:
+                                                                    logger.info(f"  [PROFILING_DATA] Extracted profiling data for {person_key}")
+                                                                    # Generate message
+                                                                    message = generate_profiling_message(profiling_data, language='English')
+                                                                    if not message.startswith('Error'):
+                                                                        logger.info(f"  [WHATSAPP_MESSAGE] Generated message for {person_key}")
+                                                                        # Send WhatsApp message in a separate thread to avoid blocking
+                                                                        def send_alert_async(message, number, image_path):
+                                                                            try:
+                                                                                logger.info(f"  [WHATSAPP_ASYNC_SEND] Attempting to send message with image_path: {image_path}")
+                                                                                if send_whatsapp_message(message, number, image_path):
+                                                                                    logger.info(f"  [WHATSAPP_SENT] Successfully sent WhatsApp alert for {person_key} to {number}")
+                                                                                else:
+                                                                                    logger.warning(f"  [WHATSAPP_SENT] Failed to send WhatsApp alert for {person_key} to {number}")
+                                                                            except Exception as async_err:
+                                                                                logger.error(f"  [WHATSAPP_SENT] Error in async WhatsApp alert for {person_key}: {async_err}", exc_info=True)
+
+                                                                        alert_thread = threading.Thread(
+                                                                            target=send_alert_async,
+                                                                            args=(message, self.whatsapp_number, save_path),
+                                                                            daemon=True
+                                                                        )
+                                                                        alert_thread.start()
+                                                                        logger.info(f"  [WHATSAPP_ASYNC] Started async thread for WhatsApp alert for {person_key}")
+                                                                    else:
+                                                                        logger.warning(f"  [WHATSAPP_MESSAGE] Failed to generate message for {person_key}: {message}")
+                                                                else:
+                                                                    logger.warning(f"  [PROFILING_DATA] Failed to extract profiling data for {person_key}: {profiling_data.get('error', 'Unknown error')}")
+                                                            except Exception as whatsapp_err:
+                                                                logger.error(f"  [WHATSAPP_ALERT] Error during WhatsApp alert process for {person_key}: {whatsapp_err}", exc_info=True)
+                                                        else:
+                                                            logger.warning(f"  [WHATSAPP_ALERT] WhatsApp alerts are disabled. Image saved but not sent.")
+                                                    else:
+                                                        logger.warning(f"  [PROFILING_CAPTURE] Failed to save profile crop for {person_key} to {save_path}")
+                                            else:
+                                                logger.warning(f"  [PROFILING_CAPTURE] Crop for {person_key} resulted in empty image (bbox: {person_to_crop['bbox']}).")
+                                        else:
+                                            logger.warning(f"  [PROFILING_CAPTURE] Could not find person data for ID {final_associated_yolo_id} in current YOLO frame to crop.")
+                                    except Exception as crop_err:
+                                        logger.error(f"  [PROFILING_CAPTURE] Error during profile capture/save for {person_key}: {crop_err}", exc_info=True)
+                                else:
+                                     logger.warning("Profiling test directory not configured, cannot save crop.")
+                                # --- End Profiling Capture ---
                         else:
                             # Only update has_gun if not already true? Or always update?
                             # Current logic always sets to True if associated again. Might be fine.

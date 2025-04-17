@@ -73,13 +73,19 @@ YOLO_IMG_SIZE = 320
 STATIC_DIR = os.path.join(BACKEND_DIR, 'static')
 IMAGES_DIR = os.path.join(STATIC_DIR, 'images')
 UPLOADS_DIR = os.path.join(IMAGES_DIR, 'uploads')
+# Add profiling directory
+PROFILING_TEST_DIR = os.path.join(BACKEND_DIR, 'profiling', 'test')
 
 # Create directories if they don't exist
 try:
     os.makedirs(UPLOADS_DIR, exist_ok=True)
     logger.info(f"Ensured uploads directory exists: {UPLOADS_DIR}")
+    # Create profiling test directory
+    os.makedirs(PROFILING_TEST_DIR, exist_ok=True)
+    logger.info(f"Ensured profiling test directory exists: {PROFILING_TEST_DIR}")
 except OSError as e:
-    logger.error(f"Failed to create uploads directory {UPLOADS_DIR}: {e}", exc_info=True)
+    # Updated error message to reflect multiple directories
+    logger.error(f"Failed to create necessary directories (uploads or profiling): {e}", exc_info=True)
     sys.exit(1)
 
 # Log key paths
@@ -139,7 +145,8 @@ def handle_video_feed_ws(ws):
             yolo_img_size=YOLO_IMG_SIZE,
             mmdet_config_path=CONFIG_PATH,
             mmdet_checkpoint_path=CHECKPOINT_PATH,
-            device=DEVICE
+            device=DEVICE,
+            profiling_test_dir=PROFILING_TEST_DIR
         )
         logger.info(f"DualModelProcessor instantiated.")
 
@@ -263,18 +270,9 @@ def detect_objects_api():
         return jsonify({"error": "An unexpected server error occurred"}), 500
 
 # --- Static File Serving ---
-@app.route('/static/images/<path:filename>')
+@app.route('/static/images/<filename>')
 def serve_image(filename):
-    """Serve static files (images) from the static/images directory."""
-    logger.debug(f"Request to serve static image: {filename}")
-    try:
-        return send_from_directory(IMAGES_DIR, filename)
-    except FileNotFoundError:
-         logger.warning(f"Static file not found: {filename} in {IMAGES_DIR}")
-         return jsonify({"error": "File not found"}), 404
-    except Exception as e:
-        logger.error(f"Error serving static file {filename}: {e}", exc_info=True)
-        return jsonify({"error": "Error serving file"}), 500
+    return send_from_directory('static/images', filename)
 
 # --- Main Execution ---
 if __name__ == '__main__':
