@@ -2,30 +2,34 @@
 
 ## Completed Features
 ✅ Basic Image Detection System
-- Implemented Flask API for image upload
-- Integrated YOLOv8 model for weapon detection
-- Successfully detects guns and knives in static images
+- Implemented Flask API for image upload (`/detect`)
+- Integrated MMDetection (ConvNext) model from `CCTV_GUN` for gun detection
 - Displays detection results with bounding boxes
-- Working demo with curl command: `curl -X POST -F "image=@backend/yolov8_model/imgs/Test/concept_terrorist_2.jpg" http://localhost:5001/detect`
+- Working demo with curl command: `curl -X POST -F "image=@backend/CCTV_GUN/tools/testing/input/image.jpeg" http://localhost:5001/detect`
+
+✅ Video Streaming Endpoint
+- Implemented WebSocket endpoint (`/ws/video`) for video processing.
+- Integrated MMDetection (ConvNext) for frame-by-frame gun detection.
+- Implemented frame skipping (1/15 frames) for performance optimization.
+- Streams annotated frames and detections to connected clients.
 
 ✅ UI Implementation
 - Basic UI for system interaction
 - Image upload and display
 - Detection results visualization with bounding boxes
 - Demo options for:
-  - Preloaded video selection
+  - Preloaded video selection (Connects to `/ws/video`)
   - Live streaming from Android device
   - Language selection (Marathi, English, Hindi)
 
-✅ Video Streaming Branch
-- Feature/streaming branch contains video processing logic
-- Basic video streaming implementation
-- Android device integration capability
-
 ## In Progress
-🔄 Model Enhancement (Rohan)
-- Working on improving YOLOv8 model for video streaming
-- Optimizing detection accuracy for real-time processing
+🔄 Performance Optimization
+- Investigating GPU deployment options (GCP/AWS/Azure with T4 GPU).
+- Plan to switch inference device from `cpu` to `cuda:0`.
+
+🔄 Code Cleanup
+- Planning to remove unused YOLOv8 code and directories.
+- Reviewing model loading strategy for `/detect` endpoint (currently per-call).
 
 🔄 Image Capture Logic
 - Implementing custom logic to save high-confidence detections
@@ -43,10 +47,10 @@
 - Message formatting with detection data and profile information
 
 ## Pending Features
-❌ Real-time Video Processing
-- Integration of improved YOLOv8 model
-- Frame processing optimization
-- Real-time detection pipeline
+❌ GPU Deployment & Tuning
+- Set up cloud GPU instance.
+- Deploy application and test performance.
+- Tune frame skipping or other parameters based on GPU speed.
 
 ❌ Profiling System
 - Complete implementation of profile generation
@@ -59,38 +63,42 @@
 - Alert management system
 
 ## Known Issues
-- Current YOLOv8 model not performing well on video streaming
-- Need to implement duplicate image prevention
-- Pending integration of profiling and alert systems
-- Limited to local deployment
+- MMDetection inference is slow on CPU (~2.4s/frame), limiting real-time detection frequency in video stream (mitigated by frame skipping).
+- Need to implement duplicate image prevention for saved detections.
+- Pending integration of profiling and alert systems.
+- `/detect` endpoint loads MMDetection model on every call (potential optimization needed).
 
 ## Next Milestones
-1. Integrate improved YOLOv8 model for video
-2. Implement image capture logic for high-confidence detections
-3. Complete profiling system implementation
-4. Integrate WhatsApp alerts with OpenAI translation
-5. Merge feature/streaming branch to main
+1. Deploy backend to a GPU instance (e.g., GCP/AWS/Azure).
+2. Configure and test MMDetection inference on GPU (`cuda:0`).
+3. Evaluate performance and adjust frame skipping / optimize further.
+4. Clean up and remove old YOLOv8 code/files.
+5. Implement image capture logic for high-confidence detections.
+6. Complete profiling system implementation.
+7. Integrate WhatsApp alerts with OpenAI translation.
 
 ## What Works
-- YOLOv8 model integration for static image detection
+- MMDetection (ConvNext) integration for static image gun detection (`/detect`).
+- MMDetection (ConvNext) integration for video stream gun detection (`/ws/video`) with frame skipping.
 - Flask API setup with endpoints:
   - `/health` for health check
   - `/detect` for image processing
-  - `/static/<filename>` for serving annotated images
-- UI for demo options and language selection
-- Basic video streaming implementation in feature/streaming branch
+  - `/static/images/<path>` for serving static images
+  - `/ws/video` for video streaming
+- UI for demo options and language selection.
 
 ## What's Left to Build
-- Improved video detection model
-- High-confidence image capture logic
-- Complete profiling system
-- WhatsApp alert system with multi-language support
-- Integration of all components
-- Testing and optimization
+- GPU deployment and performance tuning.
+- High-confidence image capture logic.
+- Complete profiling system.
+- WhatsApp alert system with multi-language support.
+- Integration of all components.
+- Thorough testing and optimization.
+- Removal of deprecated YOLOv8 code.
 
 ## Current Status
-- Backend API is functional for static images
-- UI is implemented with demo options
-- Video streaming branch exists but needs model improvement
-- Profiling and alert systems in development
-- Multi-language support planned with OpenAI integration 
+- Backend API is functional for image and video detection using MMDetection on CPU.
+- Frame skipping is implemented for video to improve perceived performance.
+- UI is implemented with demo options.
+- Profiling and alert systems are in development.
+- GPU deployment is the next major step for performance. 

@@ -3,6 +3,7 @@ import { Camera, Maximize2, Minimize2, Play, RefreshCw, Shield, Square } from 'l
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { config } from '@/config';
 
 interface Detection {
   id: number;
@@ -53,8 +54,16 @@ const CameraFeed = ({ onDetection }: { onDetection: (detection: Detection) => vo
   const handleNewImage = (data: BackendResponse) => {
     console.log('New image detected:', data);
     
-    // Update camera feed with annotated image - use the correct static path
-    setCameraFeedUrl(`http://localhost:5001/static/images/${data.annotated_image}`);
+    // Update camera feed with annotated image using the config helper
+    if (data.annotated_image) {
+        const imageUrl = config.getStaticImageUrl(data.annotated_image);
+        console.log(`Setting CameraFeed image URL to: ${imageUrl}`);
+        setCameraFeedUrl(imageUrl);
+    } else {
+        console.warn("Received new_detection payload without an annotated_image path.");
+        // Optionally set a default/placeholder image
+        // setCameraFeedUrl('https://placehold.co/1280x720/333/777?text=No+Annotated+Image');
+    }
     
     // Process detections for alerts only
     const newDetections = data.detections.map(detection => processBackendDetection(detection));
@@ -77,12 +86,17 @@ const CameraFeed = ({ onDetection }: { onDetection: (detection: Detection) => vo
 
   useEffect(() => {
     // Initialize WebSocket connection
-    const socket = new WebSocket('ws://localhost:5001/ws');
-    
+    // const socket = new WebSocket('ws://localhost:5001/ws'); // OLD notification socket
+    // NOTE: This component seems to listen for 'new_detection' which was tied to the /detect endpoint.
+    // It might need updating to use the new video feed logic or be deprecated if video feed handles all updates.
+    // For now, commenting out the old connection.
+    /*
+    const socket = new WebSocket('ws://localhost:5001/ws'); // Replace with appropriate new logic if needed
+
     socket.onopen = () => {
       console.log('WebSocket connection established');
     };
-    
+
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -93,20 +107,21 @@ const CameraFeed = ({ onDetection }: { onDetection: (detection: Detection) => vo
         console.error('Error processing WebSocket message:', error);
       }
     };
-    
+
     socket.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
-    
+
     socket.onclose = () => {
       console.log('WebSocket connection closed');
     };
-    
+
     setWs(socket);
-    
+
     return () => {
       socket.close();
     };
+    */
   }, []);
 
   const toggleFullscreen = () => {
