@@ -1,29 +1,20 @@
-# Product Context
+# Product Context: Threat Detector
 
-## Problem Statement
-The need for automated threat detection systems is growing, particularly in public spaces and security-sensitive areas. Current solutions often require expensive hardware or complex infrastructure. This project aims to provide a cost-effective, accessible solution that can be deployed locally.
-
-## Solution Overview
-A local threat detection system that:
-1. Accepts image uploads through a simple web interface
-2. Analyzes images for weapons using AI
-3. Automatically alerts security personnel via WhatsApp when threats are detected
-
-## User Experience Goals
-1. **Simplicity**: Easy-to-use web interface for image upload
-2. **Speed**: Quick processing and detection
-3. **Reliability**: Accurate weapon detection
-4. **Immediate Response**: Instant WhatsApp notifications
-5. **Accessibility**: Works on standard hardware
+## Problem Solved
+Standard CCTV systems often require constant human monitoring to detect threats. This system aims to automate the detection of visible threats like weapons in real-time, allowing security personnel to react faster and more effectively. It also provides an API for analyzing static images for threats.
 
 ## Target Users
-1. Security personnel
-2. Facility managers
-3. Event organizers
-4. Law enforcement (for initial testing/demo)
+- Security personnel monitoring CCTV feeds.
+- Law enforcement or security analysts reviewing footage/images.
 
-## Use Cases
-1. Security checkpoint monitoring
-2. Event security
-3. Public space surveillance
-4. Emergency response coordination 
+## How it Should Work
+- **Real-time:** Connects to CCTV streams, processes frames, detects threats (guns/knives), and potentially people.
+- **Alerting:** When a threat is detected (especially a weapon associated with a person), generates an alert (initially via logs/console, eventually WhatsApp).
+- **Static Analysis:** Accepts image uploads via API, runs detection, returns results including bounding boxes and confidence scores.
+- **Visualization:** Displays bounding boxes on images/video frames for detected objects.
+
+## User Experience Goals
+- **Reliability:** Detection should be accurate with minimal false positives/negatives.
+- **Timeliness:** Real-time alerts should be delivered promptly.
+- **Clarity:** Visualizations and alert information should be clear and easy to understand.
+- **Stability:** **(Current Challenge)** Detections, especially for tracked individuals and associated weapons, should be consistent across frames, avoiding confusing flickering or dropped tracks. The goal is to reliably identify and track the specific individuals associated with threats (e.g., the 2 persons with guns in a crowd). 

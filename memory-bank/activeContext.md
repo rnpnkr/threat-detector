@@ -1,72 +1,29 @@
-# Active Context
+# Active Context: Threat Detector
 
 ## Current Focus
-- Improving YOLOv8 model for video streaming (Rohan)
-- Implementing high-confidence image capture logic
-- Developing profiling system for threat detection
-- Integrating WhatsApp alerts with OpenAI for multi-language support
-- Merging feature/streaming branch to main
+**Addressing Detection Flickering and Improving Tracking/Association:** The primary focus is to resolve the inconsistent detection (flickering) issue observed with the current MMDet-only approach in video streams. This involves implementing a dual-model system as outlined in `systemPatterns.md`:
+1. Integrate a YOLO-based person tracker for stable person IDs.
+2. Continue using MMDet for gun detection.
+3. Develop IoU-based logic to associate MMDet guns with YOLO person tracks.
+4. Implement state management (`person_gun_state`) to reliably track only those persons currently associated with a gun.
 
-## Current Implementation Status
-
-### Backend
-✅ Implemented:
-- Flask API with endpoints for detection
-- YOLOv8 model integration for static image detection
-- Image processing and annotation
-- Basic error handling
-- Video streaming branch (feature/streaming)
-
-🔄 In Progress:
-- Improved YOLOv8 model for video
-- High-confidence image capture logic
-- Profiling system implementation
-- WhatsApp and OpenAI integration
-
-### Frontend
-✅ Implemented:
-- Image upload and display
-- Detection results visualization with bounding boxes
-- Demo options UI:
-  - Preloaded video selection
-  - Live streaming from Android device
-  - Language selection (Marathi, English, Hindi)
+## Recent Changes
+- **Integrated YOLO Model:** Added `backend/yolo_model/` for YOLOv8 related code and `backend/predictions/` potentially containing the `DualModelProcessor` logic.
+- Updated `backend/requirements.txt` likely adding `ultralytics` or other YOLO dependencies.
+- Modified `backend/app.py` to potentially incorporate the new prediction logic.
+- Modified `detecting_images.py` (both `detect_gun_in_image` and `detect_gun_in_video_frame` functions) to detect and visualize both persons (class 0) and guns (class 1).
+- Investigated WebSocket connection issues, identifying an ngrok bandwidth limit as the likely cause for recent frontend connection failures.
+- Added detailed logging to the WebSocket handler (`handle_video_feed_ws`) in `app.py`.
+- Experimented with different Git commits to find stable points.
 
 ## Next Steps
-1. Backend:
-   - Integrate improved YOLOv8 model for video
-   - Implement high-confidence image capture logic
-   - Complete profiling system implementation
-   - Integrate WhatsApp API with OpenAI translation
-   - Merge feature/streaming branch to main
+1.  **(Verify YOLO Integration):** Confirm the YOLO tracker is correctly processing frames within the video pipeline (`process_cctv_gun_video_stream` or equivalent).
+2.  **Implement/Refine IoU Association:** Code or refine the logic to match MMDet gun detections with YOLO person tracks based on bounding box IoU within the `DualModelProcessor` or relevant module.
+3.  **Develop State Management:** Create and manage the `person_gun_state` dictionary based on tracking and association results, ensuring it accurately reflects persons holding guns.
+4.  **Test and Refine:** Evaluate the dual-model system's performance on the test video, focusing on tracking stability and accurate gun-person association.
+5.  **(Resolve Ngrok Issue):** Address the ngrok bandwidth limit to re-enable frontend testing.
 
-2. Frontend:
-   - Enhance video streaming display
-   - Implement profiling results display
-   - Add multi-language alert configuration
-   - Optimize UI for real-time processing
-
-## Current Considerations
-1. Performance:
-   - Video streaming optimization
-   - High-confidence detection logic
-   - Real-time processing requirements
-   - System latency optimization
-
-2. Integration:
-   - WhatsApp API integration
-   - OpenAI translation service
-   - Profiling system development
-   - Android device streaming
-
-3. Data Management:
-   - High-confidence image storage
-   - Profile data processing
-   - Alert message formatting
-   - Multi-language support
-
-4. Deployment:
-   - Branch merging strategy
-   - System testing
-   - Performance optimization
-   - Security implementation 
+## Open Questions/Considerations
+- Which specific YOLO model and tracking library offers the best performance/ease of integration for this use case?
+- How to handle cases where a gun is detected but not clearly associated with a tracked person (e.g., low IoU)?
+- Performance implications of running two models (YOLO and MMDet) concurrently in the video stream.
