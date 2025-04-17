@@ -206,7 +206,12 @@ def detect_gun_in_image(image_path):
             else:
                 logger.error(f"Unrecognized result format: {type(result)}")
 
-        logger.info(f"Processed results. Found {len(detections_list)} target detections (persons/guns) above threshold {confidence_threshold}.")
+        # Calculate separate counts
+        person_count = sum(1 for d in detections_list if d.get('class') == 'person')
+        gun_count = sum(1 for d in detections_list if d.get('class') == 'gun')
+
+        # Updated log message:
+        logger.info(f"Processed results. Found {person_count} persons, {gun_count} guns above threshold {confidence_threshold}.")
 
     except Exception as e:
         logger.error(f"Error processing detection results: {e}", exc_info=True)
@@ -251,6 +256,7 @@ def detect_gun_in_image(image_path):
 def detect_gun_in_video_frame(model, frame):
     """
     Detects guns in a single video frame using a pre-loaded MMDetection model.
+    Returns the ORIGINAL frame and the detection data.
 
     Args:
         model: The initialized MMDetection model.
@@ -258,30 +264,22 @@ def detect_gun_in_video_frame(model, frame):
 
     Returns:
         tuple: A tuple containing:
-            - annotated_frame (np.ndarray): The frame with bounding boxes drawn.
+            - original_frame (np.ndarray): The ORIGINAL input frame (or a copy).
             - detections_list (list): List of detection dictionaries for the frame.
     """
-    vis_frame = frame.copy()
+    # vis_frame = frame.copy() # No longer drawing directly here, return original/copy
     detections_list = []
     result = None # Initialize result
     try:
-        # logger.debug("Running inference on video frame...") # Optional: Can be verbose
+        # logger.debug("Running inference on video frame...")
         result = inference_detector(model, frame)
         # logger.debug("Inference complete for frame.")
 
         confidence_threshold = 0.3
-        # Define class IDs and names
-        target_classes = {
-            0: "person",
-            1: "gun"
-        }
-        # Define colors for bounding boxes (BGR)
-        class_colors = {
-            "person": (255, 0, 0), # Blue
-            "gun": (0, 255, 0)   # Green
-        }
+        target_classes = { 0: "person", 1: "gun" }
+        # Define colors for bounding boxes (BGR) - Note: Person color not used here anymore
+        class_colors = { "person": (255, 0, 0), "gun": (0, 255, 0) }
 
-        # Determine the structure of the result (list vs pred_instances)
         is_pred_instances_format = hasattr(result, 'pred_instances')
 
         if is_pred_instances_format:
@@ -296,19 +294,19 @@ def detect_gun_in_video_frame(model, frame):
                 label = labels[i]
                 if label in target_classes and score >= confidence_threshold:
                     class_name = target_classes[label]
-                    color = class_colors.get(class_name, (0, 0, 255))
                     x1, y1, x2, y2 = map(int, bbox)
                     detection_data = { "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}, "class": class_name, "confidence": float(score) }
                     detections_list.append(detection_data)
-                    cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
-                    cv2.putText(vis_frame, f'{class_name}: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    # --- REMOVED DRAWING LOGIC --- 
+                    # color = class_colors.get(class_name, (0, 0, 255))
+                    # cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
+                    # cv2.putText(vis_frame, f'{class_name}: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
         elif isinstance(result, list):
             # logger.debug("Processing list format for video frame.")
             for label, class_results in enumerate(result):
                 if label in target_classes:
                     class_name = target_classes[label]
-                    color = class_colors.get(class_name, (0, 0, 255))
                     for detection in class_results:
                         if len(detection) == 5:
                             bbox = detection[:4]
@@ -317,31 +315,29 @@ def detect_gun_in_video_frame(model, frame):
                                 x1, y1, x2, y2 = map(int, bbox)
                                 detection_data = { "bbox": {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}, "class": class_name, "confidence": float(score) }
                                 detections_list.append(detection_data)
-                                cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
-                                cv2.putText(vis_frame, f'{class_name}: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-                else:
-                    # Optional: Log if results for non-target classes are found
-                    # logger.debug(f"Skipping results for class ID {label} (not in target_classes)")
-                    pass
+                                # --- REMOVED DRAWING LOGIC ---
+                                # color = class_colors.get(class_name, (0, 0, 255))
+                                # cv2.rectangle(vis_frame, (x1, y1), (x2, y2), color, 2)
+                                # cv2.putText(vis_frame, f'{class_name}: {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                # else: (No change needed here)
+                #    pass
 
-        else:
-            # Handle cases where result might be None or an unexpected type
-            if result is None:
-                logger.warning("Inference result was None.")
-            else:
-                logger.error(f"Unrecognized result format: {type(result)}")
+        # else: (No change needed here)
+        #    pass
 
-        logger.info(f"Processed results. Found {len(detections_list)} target detections (persons/guns) above threshold {confidence_threshold}.")
+        # Calculate separate counts
+        person_count = sum(1 for d in detections_list if d.get('class') == 'person')
+        gun_count = sum(1 for d in detections_list if d.get('class') == 'gun')
+
+        # Updated log message:
+        logger.info(f"Processed results. Found {person_count} persons, {gun_count} guns above threshold {confidence_threshold}.")
 
     except Exception as e:
-        # Log error less frequently for video to avoid spamming logs
-        # Maybe log only the first error or sample errors
-        # logger.error(f"Error processing video frame: {e}", exc_info=True) # Too verbose
         pass # Suppress error for now, return original frame
-        # Return original frame and empty list if error occurs during inference/processing
-        return frame, []
+        return frame, [] # Return original frame and empty list on error
 
-    return vis_frame, detections_list
+    # Return the ORIGINAL frame and the list of detections
+    return frame, detections_list
 
 
 # --- Main function for processing video stream ---
